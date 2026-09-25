@@ -45,7 +45,7 @@ async function countTokens(messages) {
   const prompt = generator.tokenizer.apply_chat_template(messages, {
     tokenize: false,
     add_generation_prompt: true,
-    enable_thinking: true,
+    enable_thinking: false,
   });
   return generator.tokenizer.encode(prompt).length;
 }
@@ -77,9 +77,9 @@ async function generate({ requestId, question, documents }) {
     skip_special_tokens: false,
     callback_function(text) {
       streamed += text;
-      // MiniCPM may prefill the thinking block in the prompt, so the stream
-      // can begin with raw reasoning and only emit </think> later.
-      const visible = streamed.includes('</think>') ? stripThinking(streamed) : '';
+      // With thinking disabled, the chat template closes the thinking block
+      // in the prompt. skip_prompt omits that closing tag from the stream.
+      const visible = stripThinking(streamed);
       if (visible.length > visibleLength) {
         report('answer-delta', { requestId, text: visible.slice(visibleLength) });
         visibleLength = visible.length;
@@ -97,13 +97,21 @@ async function generate({ requestId, question, documents }) {
       repetition_penalty: 1.0,
       streamer,
       stopping_criteria: [stoppingCriteria],
-      tokenizer_encode_kwargs: { enable_thinking: true },
+      tokenizer_encode_kwargs: { enable_thinking: false },
     });
     if (state.cancelled) {
       report('cancelled', { requestId });
       return;
     }
     const answer = stripThinking(generatedText(output, streamed));
+    if (!answer.trim()) {
+      report('error', {
+        operation: 'generate',
+        requestId,
+        message: 'The model produced no final answer. Try searching again or use a shorter question.',
+      });
+      return;
+    }
     report('complete', {
       requestId,
       answer,
