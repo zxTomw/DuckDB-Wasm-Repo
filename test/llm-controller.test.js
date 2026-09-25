@@ -148,7 +148,7 @@ describe('LLMController', () => {
     expect(elements.stopButton.disabled).toBe(true);
   });
 
-  it('shows the defined insufficient-evidence answer when generation returns no text', async () => {
+  it('does not confuse empty model output with insufficient evidence', async () => {
     const { controller, elements, worker } = createHarness();
     await controller.initializeCapability();
     await controller.load();
@@ -158,7 +158,7 @@ describe('LLMController', () => {
 
     worker.emit({ type: 'complete', requestId: request.requestId, answer: '', documentIds: ['MED-14'] });
 
-    expect(elements.answer.textContent).toMatch(/do not contain enough information/i);
+    expect(elements.answer.textContent).toMatch(/produced no final answer/i);
   });
 
   it('allows retry after a model-load error and terminates its worker on disposal', async () => {
