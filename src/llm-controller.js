@@ -197,7 +197,7 @@ export class LLMController {
       return;
     }
     if (message.type === 'complete') {
-      this.answerText = message.answer || 'The retrieved documents do not contain enough information to answer this question.';
+      this.answerText = message.answer || 'The model produced no final answer. Try searching again.';
       renderAnswer(this.elements.answer, this.answerText, this.allowedIds);
       this.activeRequestId = null;
       this.state = 'ready';
